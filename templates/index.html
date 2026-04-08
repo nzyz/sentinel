@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel Root Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-3xl mx-auto">
+        <header class="mb-8 flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-cyan-400">SENTINEL_</h1>
+            <span class="px-3 py-1 bg-red-900/30 border border-red-500 text-red-500 rounded-full text-xs">ROOT ACCESS ACTIVE</span>
+        </header>
+
+        <div class="grid grid-cols-2 gap-4 mb-8">
+            <div class="glass p-4 rounded-xl">
+                <p class="text-gray-400 text-sm">System Apps</p>
+                <p id="app-count" class="text-2xl font-mono">Loading...</p>
+            </div>
+            <div class="glass p-4 rounded-xl">
+                <p class="text-gray-400 text-sm">Status</p>
+                <p class="text-2xl text-green-400 font-mono">Online</p>
+            </div>
+        </div>
+
+        <input type="text" id="search" placeholder="Search package name (e.g. 'google.android')..." 
+               class="w-full p-4 mb-6 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-cyan-500 transition-all">
+
+        <div id="app-list" class="space-y-3">
+            </div>
+    </div>
+
+    <script>
+        let allApps = [];
+
+        async function fetchApps() {
+            const res = await fetch('/get_apps');
+            const data = await res.json();
+            allApps = data.packages;
+            document.getElementById('app-count').innerText = allApps.length;
+            renderApps(allApps);
+        }
+
+        function renderApps(apps) {
+            const container = document.getElementById('app-list');
+            container.innerHTML = '';
+            apps.forEach(pkg => {
+                const name = pkg.replace('package:', '');
+                const div = document.createElement('div');
+                div.className = 'glass p-4 rounded-xl flex justify-between items-center hover:bg-slate-800/50 transition-colors';
+                div.innerHTML = `
+                    <span class="font-mono text-sm truncate mr-4">${name}</span>
+                    <button onclick="freezeApp('${name}')" 
+                            class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-sm font-bold transition-all">
+                        FREEZE
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function freezeApp(pkg) {
+            if(!confirm(`Confirm freezing ${pkg}?`)) return;
+            const res = await fetch('/disable', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ package: pkg })
+            });
+            const result = await res.json();
+            if(result.status === 'success') alert('Package frozen successfully.');
+        }
+
+        // Search logic
+        document.getElementById('search').addEventListener('input', (e) => {
+            const filtered = allApps.filter(p => p.includes(e.target.value));
+            renderApps(filtered);
+        });
+
+        fetchApps();
+    </script>
+</body>
+</html>
+
